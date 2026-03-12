@@ -1,0 +1,51 @@
+stages:
+  - lint
+  - package
+
+variables:
+  HELM_CHART_PATH: ./charts/vless
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - "charts/vless/**/*"
+      when: always
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - ".gitlab-ci.yml"
+        - ".github/workflows/main.yml"
+        - "README.md"
+        - "LICENSE"
+      when: never
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: always
+    - when: never
+
+lint-chart-task:
+  stage: lint
+  image: dtzar/helm-kubectl:latest
+  script:
+    - helm lint $HELM_CHART_PATH
+    - helm template $HELM_CHART_PATH --debug
+
+package-task:
+  stage: package
+  image: dtzar/helm-kubectl:latest
+  script:
+    - >
+      helm package $HELM_CHART_PATH 
+      --destination ./packages
+    - >
+      helm repo index ./packages 
+      --url $CI_PROJECT_URL/-/packages/helm/stable
+    - CHART_FILE=$(ls ./packages/*.tgz | head -1)
+    - >
+      curl 
+      --request POST
+      --user "gitlab-ci-token:$CI_JOB_TOKEN"
+      --form "chart=@$CHART_FILE"
+      $CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/helm/api/stable/charts
+  artifacts:
+    paths:
+      - packages/
