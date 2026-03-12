@@ -1,57 +1,48 @@
+{{- if or $.Values.web.enabled $.Values.vpn.enabled $.Values.proxy.enabled }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "vless.fullname" . }}
-  labels:
-    {{- include "vless.labels" . | nindent 4 }}
+  name: {{ printf "%s-deployment" .Chart.Name }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
-      {{- include "vless.selectorLabels" . | nindent 6 }}
+      app: {{ printf "%s-app" .Chart.Name }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       labels:
-        {{- include "vless.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        app: {{ printf "%s-app" .Chart.Name }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "vless.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
+        - name: {{ printf "%s-container" .Chart.Name }}
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          {{- with $.Values.secretRef }}
+          envFrom:
+            - secretRef:
+                name: {{ $.Values.secretRef }}
           {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
-              protocol: TCP
-          {{- with .Values.livenessProbe }}
-          livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.readinessProbe }}
-          readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            {{- if $.Values.web.enabled }}
+            - name: {{ .Values.web.portName }}
+              containerPort: {{ .Values.web.targetPort }}
+              protocol: {{ .Values.web.protocol }}
+            {{- end }}
+            {{- if $.Values.vpn.enabled }}
+            - name: {{ .Values.vpn.portName }}
+              containerPort: {{ .Values.vpn.targetPort }}
+              protocol: {{ .Values.vpn.protocol }}
+            {{- end }}
+            {{- if $.Values.proxy.enabled }}
+            - name: {{ .Values.proxy.portName }}
+              containerPort: {{ .Values.proxy.targetPort }}
+              protocol: {{ .Values.proxy.protocol }}
+            {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -76,3 +67,5 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+---
+{{- end }}
