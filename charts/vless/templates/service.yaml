@@ -1,15 +1,48 @@
+{{- if $.Values.web.enabled }}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "vless.fullname" . }}
-  labels:
-    {{- include "vless.labels" . | nindent 4 }}
+  name: {{ $.Values.web.portName }}
 spec:
-  type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
   selector:
-    {{- include "vless.selectorLabels" . | nindent 4 }}
+    app: {{ printf "%s-app" .Chart.Name }}
+  type: {{ $.Values.web.type }}
+  ports:
+  - name: {{ $.Values.web.portName }}
+    protocol: {{ $.Values.web.protocol }}
+    port: {{ $.Values.web.port }}
+    targetPort: {{ $.Values.web.targetPort }}
+{{- end }}
+{{- if $.Values.vpn.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Values.vpn.portName }}
+spec:
+  selector:
+    app: {{ printf "%s-app" .Chart.Name }}
+  type: {{ $.Values.vpn.type }}
+  ports:
+  - name: {{ $.Values.vpn.portName }}
+    protocol: {{ $.Values.vpn.protocol }}
+    port: {{ $.Values.vpn.port }}
+    targetPort: {{ $.Values.vpn.targetPort }}
+{{- end }}
+{{- if $.Values.proxy.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $.Values.proxy.portName }}
+spec:
+  selector:
+    app: {{ printf "%s-app" .Chart.Name }}
+  type: {{ $.Values.proxy.type }}
+  ports:
+  - name: {{ $.Values.proxy.portName }}
+    protocol: {{ $.Values.proxy.protocol }}
+    port: {{ $.Values.proxy.port }}
+    targetPort: {{ $.Values.proxy.targetPort }}
+{{- end }}
